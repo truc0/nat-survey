@@ -7,7 +7,7 @@ from crawler import Crawler
 
 app = create_app(APP_NAME)
 
-@app.route('/')
+@app.route('/api/')
 def index():
     crawler = Crawler(BASE_URL)
     return crawler.fetch()
