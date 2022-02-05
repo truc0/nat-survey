@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 
 from flask import Flask
+from flask_cors import CORS
 
-from config import APP_NAME
+from config import APP_NAME, ALLOWED_ORIGINS
 
 def create_app(name):
     app = Flask(name)
+    CORS(app, origins=ALLOWED_ORIGINS)
     return app
 
 if __name__ == '__main__':
