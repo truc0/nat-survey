@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import requests
+import datetime
 
 """
 CrawlerConst gives names to question id
@@ -66,6 +67,24 @@ class Crawler:
         
         return [dict(code=code, **item) for code, item in data.items()]
 
+
+class CachedCrawler(Crawler):
+
+    def __init__(self, url, cache_time=datetime.timedelta(minutes=5)):
+        super(CachedCrawler, self).__init__(url)
+        self.cache_time = cache_time
+        self.cached_result = super(CachedCrawler, self).fetch()
+        self.last_request_time = datetime.datetime.now()
+
+    def fetch(self, force_update=False):
+        now = datetime.datetime.now()
+        expired = now - self.last_request_time > self.cache_time
+
+        if expired or force_update:
+            self.cached_result = super(CachedCrawler, self).fetch()
+            return self.cached_result
+        else:
+            return self.cached_result
             
 
 if __name__ == '__main__':
