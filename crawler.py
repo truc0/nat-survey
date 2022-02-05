@@ -63,7 +63,8 @@ class Crawler:
                 data[code]['durations'].append(duration)
             else:
                 data[code] = dict(name=name, durations=[duration])
-        return data
+        
+        return [dict(code=code, **item) for code, item in data.items()]
 
             
 
