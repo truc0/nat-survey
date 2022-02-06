@@ -82,9 +82,10 @@ class CachedCrawler(Crawler):
 
         if expired or force_update:
             self.cached_result = super(CachedCrawler, self).fetch()
-            return self.cached_result
+            self.last_request_time = datetime.datetime.now()
+            return dict(last_update=self.last_request_time, **self.cached_result)
         else:
-            return self.cached_result
+            return dict(last_update=self.last_request_time, **self.cached_result)
             
 
 if __name__ == '__main__':
