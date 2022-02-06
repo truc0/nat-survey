@@ -3,6 +3,7 @@
 
 import requests
 import datetime
+import json
 
 """
 CrawlerConst gives names to question id
@@ -22,25 +23,43 @@ class CrawlerConst:
 
 class Crawler:
 
-    def __init__(self, url):
+    def __init__(self, url, page_size=100):
         self.url = url
+        self.page_size = page_size
 
     def fetch(self):
-        response = requests.get(self.url)
+        response = requests.get(self.url, params={})
         if response.status_code != 200:
             return None
         data = response.json()
-        return self.parse(data)
+        total = data['data']['total']
+
+        result = dict()
+        page_index_max = 1 + (total - 1) // self.page_size
+        
+        for page_index in range(1, page_index_max + 1):
+            per_page_result = self.fetch_per_page(page_index)
+            result = self.merge_results(result, per_page_result)
+
+        return self.construct_result(raw_data=result, total=total)
+
+    def fetch_per_page(self, page_index):
+        params = {
+            'current': page_index,
+            'pageSize': self.page_size,
+        }
+        response = requests.get(self.url, params={
+            'params': json.dumps(params)
+        })
+        if response.status_code != 200:
+            raise ValueError(f'Error fetching page {page_index}')
+        return self.parse(response.json())
         
     def parse(self, data):
         if not data['success']:
             return None
         rows = data['data']['rows']
-        total = data['data']['total']
-        return dict(
-            data=self.parse_rows(rows),
-            total=total,
-        )
+        return self.parse_rows(rows)
 
     def parse_rows(self, rows):
         # data is a map from code of hospital to real data 
@@ -65,7 +84,33 @@ class Crawler:
             else:
                 data[code] = dict(name=name, durations=[duration])
         
-        return [dict(code=code, **item) for code, item in data.items()]
+        return data
+
+    """
+    serialize_data transfer `data` from a code-value mapping to a list
+    by add code as a property to the value.
+    """
+    @classmethod
+    def serialize_data(cls, data):
+        return [dict(code=code, **value) for code, value in data.items()]
+
+    def construct_result(self, raw_data, total):
+        return dict(total=total, data=self.serialize_data(raw_data))
+
+    """
+    merge_results merges two parsed row, sum up the value of same code
+    and add other fields
+    """
+    @classmethod
+    def merge_results(_, one, another):
+        result = one.copy()
+        another = another.copy()
+        for key in another.keys():
+            if key in result:
+                result[key]['durations'].extend(another[key]['durations'])
+            else:
+                result[key] = another[key]
+        return result
 
 
 class CachedCrawler(Crawler):
